@@ -1,0 +1,73 @@
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/src
+#      - ./logs:/var/log
+    working_dir: /src
+    command:
+      - uvicorn
+      - src.main:main_app
+      - --host
+      - ${HOST:-0.0.0.0}
+      - --port
+      - ${APP_PORT:-8000}
+      - --reload
+    ports:
+      - "${HOST_PORT:-8000}:${APP_PORT:-8000}"
+    environment:
+      - TZ=${TZ:-Europe/Moscow}
+      - PRIVATE_KEY_PATH=/run/secrets/private_key
+      - PUBLIC_KEY_PATH=/run/secrets/public_key
+    secrets:
+      - private_key
+      - public_key
+    networks:
+      - network
+    depends_on:
+      - db
+
+  db:
+    container_name: db
+    image: postgres:latest
+    ports:
+      - "${HOST_DB_PORT:-5433}:${CONTAINER_DB_PORT:-5432}"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-library}
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin}
+      - TZ=${TZ:-Europe/Moscow}
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - network
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    environment:
+      - TZ=${TZ:-Europe/Moscow}
+#    volumes:
+#      - redis-data:/data
+    networks:
+      - network
+
+networks:
+  network:
+    name: network
+    driver: bridge
+
+#volumes:
+#  redis_data: {}
+#  postgres_data: {}
+
+secrets:
+  private_key:
+    file: ./tokens/private.pem
+  public_key:
+    file: ./tokens/public.pem

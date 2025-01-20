@@ -1,0 +1,53 @@
+services:
+  testdb:
+    container_name: testdb
+    image: postgres:latest
+    ports:
+      - "${HOST_DB_PORT_TEST:-5434}:${CONTAINER_DB_PORT_TEST:-5432}"
+    environment:
+      - POSTGRES_DB=librarytest
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - TZ=${TZ:-Europe/Moscow}
+    networks:
+      - network
+
+  testapp:
+    container_name: testapp
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile
+    volumes:
+      - ../src:/src
+      - ../tests:/tests
+      - ../pyproject.toml:/pyproject.toml
+    working_dir: /
+    command:
+      - python
+      - -m
+      - pytest
+      - -vv
+      - -s
+      - tests/
+    environment:
+      - TZ=${TZ:-Europe/Moscow}
+      - PRIVATE_KEY_PATH=/run/secrets/private_key
+      - PUBLIC_KEY_PATH=/run/secrets/public_key
+    secrets:
+      - private_key
+      - public_key
+    networks:
+      - network
+    depends_on:
+      - testdb
+
+networks:
+  network:
+    name: network
+    driver: bridge
+
+secrets:
+  private_key:
+    file: ../tokens/private.pem
+  public_key:
+    file: ../tokens/public.pem
